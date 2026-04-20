@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Notion Context Skill</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f2ea;
+        --panel: #fffdf8;
+        --text: #1f1a17;
+        --muted: #62574e;
+        --accent: #b5542e;
+        --accent-dark: #7f3417;
+        --line: #e6d7c6;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        background:
+          radial-gradient(circle at top left, rgba(181, 84, 46, 0.12), transparent 30%),
+          linear-gradient(180deg, #fbf8f2 0%, var(--bg) 100%);
+        color: var(--text);
+      }
+
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 64px 24px 80px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 20px 60px rgba(84, 59, 35, 0.08);
+      }
+
+      h1,
+      h2 {
+        line-height: 1.05;
+        margin: 0 0 16px;
+      }
+
+      h1 {
+        font-size: clamp(2.4rem, 5vw, 4.6rem);
+      }
+
+      h2 {
+        font-size: 1.35rem;
+        margin-top: 28px;
+      }
+
+      p,
+      li,
+      code {
+        font-size: 1.04rem;
+        line-height: 1.65;
+      }
+
+      p {
+        margin: 0 0 16px;
+      }
+
+      ul {
+        padding-left: 20px;
+      }
+
+      a {
+        color: var(--accent-dark);
+      }
+
+      .button-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 28px 0 20px;
+      }
+
+      .button {
+        display: inline-block;
+        padding: 12px 18px;
+        border-radius: 999px;
+        border: 1px solid var(--accent);
+        text-decoration: none;
+        font-weight: 700;
+      }
+
+      .button.primary {
+        background: var(--accent);
+        color: #fffaf5;
+      }
+
+      .button.secondary {
+        background: transparent;
+        color: var(--accent-dark);
+      }
+
+      .note {
+        margin-top: 20px;
+        padding: 16px 18px;
+        border-left: 4px solid var(--accent);
+        background: #fff7ef;
+        border-radius: 12px;
+      }
+
+      code {
+        background: #f4eadf;
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="panel">
+        <h1>Notion Context Skill for AI Edge Gallery</h1>
+        <p>
+          This GitHub Pages site hosts a custom AI Edge Gallery skill that lets Gemma read unfinished
+          tasks from Notion, sort them by due date and priority, and summarize what to tackle next.
+        </p>
+
+        <div class="button-row">
+          <a class="button primary" href="./SKILL.md">Open SKILL.md</a>
+          <a class="button secondary" href="./README.md">Read Setup Notes</a>
+        </div>
+
+        <div class="note">
+          Use the GitHub Pages root URL in AI Edge Gallery. The right URL pattern is
+          <code>https://YOUR-NAME.github.io/REPO-NAME/</code>.
+        </div>
+
+        <h2>Current defaults</h2>
+        <ul>
+          <li>Status filter: <code>Status != Done</code></li>
+          <li>Due date column: <code>Date</code></li>
+          <li>Priority column: <code>Priority</code></li>
+          <li>Private database ID: supplied through the app secret or the prompt</li>
+        </ul>
+
+        <h2>Example prompt</h2>
+        <p><code>What tasks are due soon, and what are 3 quick wins I can knock out?</code></p>
+      </section>
+    </main>
+  </body>
+</html>
