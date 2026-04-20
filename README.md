@@ -43,8 +43,8 @@ That second option keeps the database ID out of the public repository and out of
 ## Local structure
 
 - `SKILL.md`: the skill definition file AI Edge Gallery looks for
-- `scripts/index.html`: the JavaScript runner the skill executes
 - `index.html`: small landing page for humans visiting the site
+- `scripts/index.html`: the hidden JS runner loaded by AI Edge Gallery
 - `.nojekyll`: disables Jekyll processing so `SKILL.md` is served directly
 
 ## Publish steps

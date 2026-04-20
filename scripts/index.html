@@ -34,593 +34,577 @@
             error: error.message || "Unknown error while querying Notion.",
           });
         }
+      };
 
-        function parseSecret(rawSecret) {
-          const trimmed = typeof rawSecret === "string" ? rawSecret.trim() : "";
-          if (!trimmed) {
-            throw new Error("Missing Notion secret.");
-          }
-
-          if (trimmed.startsWith("{")) {
-            const parsed = JSON.parse(trimmed);
-            const token = typeof parsed.token === "string" ? parsed.token.trim() : "";
-            const databaseId = typeof parsed.database_id === "string" ? parsed.database_id.trim() : "";
-            const dataSourceId = typeof parsed.data_source_id === "string" ? parsed.data_source_id.trim() : "";
-
-            if (!token) {
-              throw new Error("JSON secret must include a token field.");
-            }
-
-            return {
-              token,
-              database_id: databaseId,
-              data_source_id: dataSourceId,
-            };
-          }
-
-          return {
-            token: trimmed,
-            database_id: "",
-            data_source_id: "",
-          };
+      function parseSecret(rawSecret) {
+        const trimmed = typeof rawSecret === "string" ? rawSecret.trim() : "";
+        if (!trimmed) {
+          throw new Error("Missing Notion secret.");
         }
 
-        function parseInput(raw, secretConfig) {
-          const parsed = raw ? JSON.parse(raw) : {};
-          const query = typeof parsed.query === "string" ? parsed.query.trim() : "";
-          const pageId = typeof parsed.page_id === "string" ? parsed.page_id.trim() : "";
-          const databaseId = typeof parsed.database_id === "string" && parsed.database_id.trim()
-            ? parsed.database_id.trim()
-            : secretConfig.database_id;
-          const dataSourceId = typeof parsed.data_source_id === "string" && parsed.data_source_id.trim()
-            ? parsed.data_source_id.trim()
-            : secretConfig.data_source_id;
-          const maxResults = clampInteger(parsed.max_results, DEFAULT_MAX_RESULTS, 1, MAX_RESULTS_LIMIT);
-          const maxPages = clampInteger(parsed.max_pages, DEFAULT_MAX_PAGES, 1, MAX_PAGES_LIMIT);
-          const includeContent = parsed.include_content !== false;
-          const includeProperties = parsed.include_properties !== false;
-          const statusProperty = typeof parsed.status_property === "string" && parsed.status_property.trim()
-            ? parsed.status_property.trim()
-            : "Status";
-          const doneValue = typeof parsed.done_value === "string" && parsed.done_value.trim()
-            ? parsed.done_value.trim()
-            : "Done";
-          const dueProperty = typeof parsed.due_property === "string" && parsed.due_property.trim()
-            ? parsed.due_property.trim()
-            : "Date";
-          const priorityProperty = typeof parsed.priority_property === "string" && parsed.priority_property.trim()
-            ? parsed.priority_property.trim()
-            : "Priority";
+        if (trimmed.startsWith("{")) {
+          const parsed = JSON.parse(trimmed);
+          const token = typeof parsed.token === "string" ? parsed.token.trim() : "";
+          const databaseId = typeof parsed.database_id === "string" ? parsed.database_id.trim() : "";
+          const dataSourceId = typeof parsed.data_source_id === "string" ? parsed.data_source_id.trim() : "";
 
-          if (!query && !pageId && !databaseId && !dataSourceId) {
-            throw new Error("Provide query, page_id, database_id, or data_source_id.");
+          if (!token) {
+            throw new Error("JSON secret must include a token field.");
           }
 
           return {
-            query,
-            page_id: pageId,
+            token,
             database_id: databaseId,
             data_source_id: dataSourceId,
-            max_results: maxResults,
-            max_pages: maxPages,
-            include_content: includeContent,
-            include_properties: includeProperties,
-            status_property: statusProperty,
-            done_value: doneValue,
-            due_property: dueProperty,
-            priority_property: priorityProperty,
           };
         }
 
-        async function searchAndBuildResults(input, secretConfig) {
-          const searchResponse = await notionFetch("/search", {
-            method: "POST",
-            body: {
-              query: input.query,
-              filter: {
-                property: "object",
-                value: "page",
-              },
-              sort: {
-                direction: "descending",
-                timestamp: "last_edited_time",
-              },
-              page_size: input.max_results,
+        return {
+          token: trimmed,
+          database_id: "",
+          data_source_id: "",
+        };
+      }
+
+      function parseInput(raw, secretConfig) {
+        const parsed = raw ? JSON.parse(raw) : {};
+        const query = typeof parsed.query === "string" ? parsed.query.trim() : "";
+        const pageId = typeof parsed.page_id === "string" ? parsed.page_id.trim() : "";
+        const databaseId = typeof parsed.database_id === "string" && parsed.database_id.trim()
+          ? parsed.database_id.trim()
+          : secretConfig.database_id;
+        const dataSourceId = typeof parsed.data_source_id === "string" && parsed.data_source_id.trim()
+          ? parsed.data_source_id.trim()
+          : secretConfig.data_source_id;
+        const maxResults = clampInteger(parsed.max_results, DEFAULT_MAX_RESULTS, 1, MAX_RESULTS_LIMIT);
+        const maxPages = clampInteger(parsed.max_pages, DEFAULT_MAX_PAGES, 1, MAX_PAGES_LIMIT);
+        const includeContent = parsed.include_content !== false;
+        const includeProperties = parsed.include_properties !== false;
+        const statusProperty = typeof parsed.status_property === "string" && parsed.status_property.trim()
+          ? parsed.status_property.trim()
+          : "Status";
+        const doneValue = typeof parsed.done_value === "string" && parsed.done_value.trim()
+          ? parsed.done_value.trim()
+          : "Done";
+        const dueProperty = typeof parsed.due_property === "string" && parsed.due_property.trim()
+          ? parsed.due_property.trim()
+          : "Date";
+        const priorityProperty = typeof parsed.priority_property === "string" && parsed.priority_property.trim()
+          ? parsed.priority_property.trim()
+          : "Priority";
+
+        if (!query && !pageId && !databaseId && !dataSourceId) {
+          throw new Error("Provide query, page_id, database_id, or data_source_id.");
+        }
+
+        return {
+          query,
+          page_id: pageId,
+          database_id: databaseId,
+          data_source_id: dataSourceId,
+          max_results: maxResults,
+          max_pages: maxPages,
+          include_content: includeContent,
+          include_properties: includeProperties,
+          status_property: statusProperty,
+          done_value: doneValue,
+          due_property: dueProperty,
+          priority_property: priorityProperty,
+        };
+      }
+
+      async function searchAndBuildResults(input, secretConfig) {
+        const searchResponse = await notionFetch("/search", {
+          method: "POST",
+          body: {
+            query: input.query,
+            filter: {
+              property: "object",
+              value: "page",
             },
+            sort: {
+              direction: "descending",
+              timestamp: "last_edited_time",
+            },
+            page_size: input.max_results,
+          },
+        }, secretConfig);
+
+        const pages = Array.isArray(searchResponse.results) ? searchResponse.results : [];
+        const limitedPages = pages.slice(0, input.max_results);
+
+        return Promise.all(
+          limitedPages.map((page) => buildPageResult(page.id, input, secretConfig, page))
+        );
+      }
+
+      async function buildPageResult(pageIdOrUrl, input, secretConfig, pageData) {
+        const pageId = normalizePageId(pageIdOrUrl);
+        const page = await notionFetch(`/pages/${pageId}`, {}, secretConfig);
+        const title = getPageTitle(page);
+        const properties = input.include_properties ? getReadableProperties(page.properties || {}) : [];
+        const normalizedFields = getTaskFields(page.properties || {}, input);
+        const content = input.include_content
+          ? await getFlattenedPageContent(pageId, secretConfig)
+          : [];
+
+        return {
+          id: page.id,
+          url: page.url || pageData?.url || "",
+          title,
+          lastEditedTime: page.last_edited_time || "",
+          due: normalizedFields.due,
+          priority: normalizedFields.priority,
+          status: normalizedFields.status,
+          properties,
+          content,
+        };
+      }
+
+      async function queryTaskPages(input, secretConfig) {
+        const dataSourceId = await resolveDataSourceId(input, secretConfig);
+        const pages = [];
+        let nextCursor = undefined;
+
+        while (pages.length < input.max_pages) {
+          const remaining = input.max_pages - pages.length;
+          const body = {
+            page_size: Math.min(100, remaining),
+            filter: {
+              property: input.status_property,
+              status: {
+                does_not_equal: input.done_value,
+              },
+            },
+          };
+
+          if (nextCursor) {
+            body.start_cursor = nextCursor;
+          }
+
+          const response = await notionFetch(`/data_sources/${dataSourceId}/query`, {
+            method: "POST",
+            body,
           }, secretConfig);
 
-          const pages = Array.isArray(searchResponse.results) ? searchResponse.results : [];
-          const limitedPages = pages.slice(0, input.max_results);
+          const batch = Array.isArray(response.results) ? response.results : [];
+          pages.push(...batch.filter((item) => item.object === "page"));
 
-          return Promise.all(
-            limitedPages.map((page) => buildPageResult(page.id, input, secretConfig, page))
-          );
+          if (!response.has_more || !response.next_cursor) {
+            break;
+          }
+          nextCursor = response.next_cursor;
         }
 
-        async function buildPageResult(pageIdOrUrl, input, secretConfig, pageData) {
-          const pageId = normalizePageId(pageIdOrUrl);
-          const page = await notionFetch(`/pages/${pageId}`, {}, secretConfig);
-          const title = getPageTitle(page);
-          const properties = input.include_properties ? getReadableProperties(page.properties || {}) : [];
-          const normalizedFields = getTaskFields(page.properties || {}, input);
-          const content = input.include_content
-            ? await getFlattenedPageContent(pageId, secretConfig)
-            : [];
-
-          return {
-            id: page.id,
-            url: page.url || pageData?.url || "",
-            title,
-            lastEditedTime: page.last_edited_time || "",
-            due: normalizedFields.due,
-            priority: normalizedFields.priority,
-            status: normalizedFields.status,
-            properties,
-            content,
-          };
+        const builtPages = [];
+        for (const page of pages) {
+          builtPages.push(await buildPageResult(page.id, input, secretConfig, page));
         }
 
-        async function queryTaskPages(input, secretConfig) {
-          const dataSourceId = await resolveDataSourceId(input, secretConfig);
-          const pages = [];
+        return sortTaskResults(builtPages);
+      }
+
+      async function resolveDataSourceId(input, secretConfig) {
+        if (input.data_source_id) {
+          return normalizePageId(input.data_source_id);
+        }
+
+        const databaseId = normalizePageId(input.database_id);
+        const database = await notionFetch(`/databases/${databaseId}`, {}, secretConfig);
+        const dataSources = Array.isArray(database.data_sources) ? database.data_sources : [];
+
+        if (!dataSources.length) {
+          throw new Error("No data sources were found under that Notion database.");
+        }
+
+        return normalizePageId(dataSources[0].id);
+      }
+
+      async function getFlattenedPageContent(pageId, secretConfig) {
+        const lines = [];
+        let blockCount = 0;
+
+        async function visitChildren(blockId, depth) {
+          if (depth > MAX_BLOCK_DEPTH || blockCount >= MAX_BLOCKS_PER_PAGE) {
+            return;
+          }
+
           let nextCursor = undefined;
+          do {
+            const suffix = nextCursor ? `?page_size=100&start_cursor=${encodeURIComponent(nextCursor)}` : "?page_size=100";
+            const response = await notionFetch(`/blocks/${blockId}/children${suffix}`, {}, secretConfig);
+            const blocks = Array.isArray(response.results) ? response.results : [];
 
-          while (pages.length < input.max_pages) {
-            const remaining = input.max_pages - pages.length;
-            const body = {
-              page_size: Math.min(100, remaining),
-              filter: {
-                property: input.status_property,
-                status: {
-                  does_not_equal: input.done_value,
-                },
-              },
-            };
-
-            if (nextCursor) {
-              body.start_cursor = nextCursor;
-            }
-
-            const response = await notionFetch(`/data_sources/${dataSourceId}/query`, {
-              method: "POST",
-              body,
-            }, secretConfig);
-
-            const batch = Array.isArray(response.results) ? response.results : [];
-            pages.push(...batch.filter((item) => item.object === "page"));
-
-            if (!response.has_more || !response.next_cursor) {
-              break;
-            }
-            nextCursor = response.next_cursor;
-          }
-
-          const builtPages = [];
-          for (const page of pages) {
-            builtPages.push(await buildPageResult(page.id, input, secretConfig, page));
-          }
-
-          return sortTaskResults(builtPages);
-        }
-
-        async function resolveDataSourceId(input, secretConfig) {
-          if (input.data_source_id) {
-            return normalizePageId(input.data_source_id);
-          }
-
-          const databaseId = normalizePageId(input.database_id);
-          const database = await notionFetch(`/databases/${databaseId}`, {}, secretConfig);
-          const dataSources = Array.isArray(database.data_sources) ? database.data_sources : [];
-
-          if (!dataSources.length) {
-            throw new Error("No data sources were found under that Notion database.");
-          }
-
-          return normalizePageId(dataSources[0].id);
-        }
-
-        async function getFlattenedPageContent(pageId, secretConfig) {
-          const lines = [];
-          let blockCount = 0;
-
-          async function visitChildren(blockId, depth) {
-            if (depth > MAX_BLOCK_DEPTH || blockCount >= MAX_BLOCKS_PER_PAGE) {
-              return;
-            }
-
-            let nextCursor = undefined;
-            do {
-              const suffix = nextCursor ? `?page_size=100&start_cursor=${encodeURIComponent(nextCursor)}` : "?page_size=100";
-              const response = await notionFetch(`/blocks/${blockId}/children${suffix}`, {}, secretConfig);
-              const blocks = Array.isArray(response.results) ? response.results : [];
-
-              for (const block of blocks) {
-                if (blockCount >= MAX_BLOCKS_PER_PAGE) {
-                  break;
-                }
-
-                const line = formatBlock(block, depth);
-                if (line) {
-                  lines.push(line);
-                }
-                blockCount += 1;
-
-                if (block.has_children) {
-                  await visitChildren(block.id, depth + 1);
-                }
+            for (const block of blocks) {
+              if (blockCount >= MAX_BLOCKS_PER_PAGE) {
+                break;
               }
 
-              nextCursor = response.has_more ? response.next_cursor : undefined;
-            } while (nextCursor && blockCount < MAX_BLOCKS_PER_PAGE);
-          }
-
-          await visitChildren(pageId, 0);
-          return lines;
-        }
-
-        function formatBlock(block, depth) {
-          const indent = "  ".repeat(depth);
-          const type = block.type;
-          const value = block[type] || {};
-          const text = richTextToPlain(value.rich_text || []);
-
-          switch (type) {
-            case "paragraph":
-              return text ? `${indent}${text}` : "";
-            case "heading_1":
-              return text ? `${indent}# ${text}` : "";
-            case "heading_2":
-              return text ? `${indent}## ${text}` : "";
-            case "heading_3":
-              return text ? `${indent}### ${text}` : "";
-            case "bulleted_list_item":
-              return text ? `${indent}- ${text}` : "";
-            case "numbered_list_item":
-              return text ? `${indent}1. ${text}` : "";
-            case "to_do":
-              return text ? `${indent}- [${value.checked ? "x" : " "}] ${text}` : "";
-            case "toggle":
-              return text ? `${indent}> ${text}` : "";
-            case "quote":
-              return text ? `${indent}> ${text}` : "";
-            case "callout":
-              return text ? `${indent}Callout: ${text}` : "";
-            case "code":
-              return text ? `${indent}Code (${value.language || "plain text"}): ${text}` : "";
-            case "child_page":
-              return value.title ? `${indent}Child page: ${value.title}` : "";
-            case "bookmark":
-              return value.url ? `${indent}Bookmark: ${value.url}` : "";
-            case "link_preview":
-              return value.url ? `${indent}Link preview: ${value.url}` : "";
-            case "embed":
-              return value.url ? `${indent}Embed: ${value.url}` : "";
-            case "equation":
-              return value.expression ? `${indent}Equation: ${value.expression}` : "";
-            case "divider":
-              return `${indent}---`;
-            default:
-              if (text) {
-                return `${indent}${type}: ${text}`;
+              const line = formatBlock(block, depth);
+              if (line) {
+                lines.push(line);
               }
-              if (value.caption && value.caption.length) {
-                return `${indent}${type}: ${richTextToPlain(value.caption)}`;
+              blockCount += 1;
+
+              if (block.has_children) {
+                await visitChildren(block.id, depth + 1);
               }
-              return "";
-          }
-        }
-
-        function richTextToPlain(items) {
-          return (items || [])
-            .map((item) => {
-              if (typeof item.plain_text === "string") {
-                return item.plain_text;
-              }
-              return "";
-            })
-            .join("")
-            .trim();
-        }
-
-        function getPageTitle(page) {
-          const properties = page.properties || {};
-
-          for (const property of Object.values(properties)) {
-            if (!property || property.type !== "title") {
-              continue;
-            }
-            const title = richTextToPlain(property.title || []);
-            if (title) {
-              return title;
-            }
-          }
-
-          return "Untitled page";
-        }
-
-        function getReadableProperties(properties) {
-          const lines = [];
-
-          for (const [name, property] of Object.entries(properties)) {
-            if (!property || property.type === "title") {
-              continue;
             }
 
-            const value = propertyValueToText(property);
-            if (value) {
-              lines.push(`${name}: ${value}`);
+            nextCursor = response.has_more ? response.next_cursor : undefined;
+          } while (nextCursor && blockCount < MAX_BLOCKS_PER_PAGE);
+        }
+
+        await visitChildren(pageId, 0);
+        return lines;
+      }
+
+      function formatBlock(block, depth) {
+        const indent = "  ".repeat(depth);
+        const type = block.type;
+        const value = block[type] || {};
+        const text = richTextToPlain(value.rich_text || []);
+
+        switch (type) {
+          case "paragraph":
+            return text ? `${indent}${text}` : "";
+          case "heading_1":
+            return text ? `${indent}# ${text}` : "";
+          case "heading_2":
+            return text ? `${indent}## ${text}` : "";
+          case "heading_3":
+            return text ? `${indent}### ${text}` : "";
+          case "bulleted_list_item":
+            return text ? `${indent}- ${text}` : "";
+          case "numbered_list_item":
+            return text ? `${indent}1. ${text}` : "";
+          case "to_do":
+            return text ? `${indent}- [${value.checked ? "x" : " "}] ${text}` : "";
+          case "toggle":
+            return text ? `${indent}> ${text}` : "";
+          case "quote":
+            return text ? `${indent}> ${text}` : "";
+          case "callout":
+            return text ? `${indent}Callout: ${text}` : "";
+          case "code":
+            return text ? `${indent}Code (${value.language || "plain text"}): ${text}` : "";
+          case "child_page":
+            return value.title ? `${indent}Child page: ${value.title}` : "";
+          case "bookmark":
+            return value.url ? `${indent}Bookmark: ${value.url}` : "";
+          case "link_preview":
+            return value.url ? `${indent}Link preview: ${value.url}` : "";
+          case "embed":
+            return value.url ? `${indent}Embed: ${value.url}` : "";
+          case "equation":
+            return value.expression ? `${indent}Equation: ${value.expression}` : "";
+          case "divider":
+            return `${indent}---`;
+          default:
+            if (text) {
+              return `${indent}${type}: ${text}`;
             }
-          }
-
-          return lines;
-        }
-
-        function getTaskFields(properties, input) {
-          const duePropertyNames = [
-            input.due_property,
-            "Date",
-            "Due",
-            "Due date",
-            "Deadline",
-            "Target date",
-          ].filter(Boolean);
-
-          const status = readNamedProperty(properties, input.status_property);
-          const due = readDateProperty(properties, duePropertyNames);
-          const priority = readNamedProperty(properties, input.priority_property);
-
-          return { status, due, priority };
-        }
-
-        function readNamedProperty(properties, name) {
-          if (!name || !properties[name]) {
+            if (value.caption && value.caption.length) {
+              return `${indent}${type}: ${richTextToPlain(value.caption)}`;
+            }
             return "";
+        }
+      }
+
+      function richTextToPlain(items) {
+        return (items || [])
+          .map((item) => {
+            if (typeof item.plain_text === "string") {
+              return item.plain_text;
+            }
+            return "";
+          })
+          .join("")
+          .trim();
+      }
+
+      function getPageTitle(page) {
+        const properties = page.properties || {};
+
+        for (const property of Object.values(properties)) {
+          if (!property || property.type !== "title") {
+            continue;
           }
-          return propertyValueToText(properties[name]);
+          const title = richTextToPlain(property.title || []);
+          if (title) {
+            return title;
+          }
         }
 
-        function readDateProperty(properties, names) {
-          for (const name of names) {
-            const property = properties[name];
-            if (!property || property.type !== "date" || !property.date) {
-              continue;
-            }
-            return [property.date.start, property.date.end].filter(Boolean).join(" to ");
+        return "Untitled page";
+      }
+
+      function getReadableProperties(properties) {
+        const lines = [];
+
+        for (const [name, property] of Object.entries(properties)) {
+          if (!property || property.type === "title") {
+            continue;
           }
+
+          const value = propertyValueToText(property);
+          if (value) {
+            lines.push(`${name}: ${value}`);
+          }
+        }
+
+        return lines;
+      }
+
+      function getTaskFields(properties, input) {
+        const duePropertyNames = [
+          input.due_property,
+          "Date",
+          "Due",
+          "Due date",
+          "Deadline",
+          "Target date",
+        ].filter(Boolean);
+
+        const status = readNamedProperty(properties, input.status_property);
+        const due = readDateProperty(properties, duePropertyNames);
+        const priority = readNamedProperty(properties, input.priority_property);
+
+        return { status, due, priority };
+      }
+
+      function readNamedProperty(properties, name) {
+        if (!name || !properties[name]) {
           return "";
         }
+        return propertyValueToText(properties[name]);
+      }
 
-        function propertyValueToText(property) {
-          switch (property.type) {
-            case "rich_text":
-              return richTextToPlain(property.rich_text || []);
-            case "number":
-              return property.number === null ? "" : String(property.number);
-            case "select":
-              return property.select ? property.select.name || "" : "";
-            case "multi_select":
-              return (property.multi_select || []).map((item) => item.name).filter(Boolean).join(", ");
-            case "status":
-              return property.status ? property.status.name || "" : "";
-            case "date":
-              return property.date ? [property.date.start, property.date.end].filter(Boolean).join(" to ") : "";
-            case "checkbox":
-              return property.checkbox ? "true" : "false";
-            case "url":
-              return property.url || "";
-            case "email":
-              return property.email || "";
-            case "phone_number":
-              return property.phone_number || "";
-            case "people":
-              return (property.people || []).map((person) => person.name).filter(Boolean).join(", ");
-            case "files":
-              return (property.files || [])
-                .map((file) => file.name || file.external?.url || file.file?.url || "")
-                .filter(Boolean)
-                .join(", ");
-            case "formula":
-              return formulaValueToText(property.formula || {});
-            case "relation":
-              return (property.relation || []).map((item) => item.id).join(", ");
-            case "rollup":
-              return rollupValueToText(property.rollup || {});
-            case "created_time":
-            case "last_edited_time":
-              return property[property.type] || "";
-            case "created_by":
-            case "last_edited_by":
-              return property[property.type]?.name || "";
-            default:
-              return "";
+      function readDateProperty(properties, names) {
+        for (const name of names) {
+          const property = properties[name];
+          if (!property || property.type !== "date" || !property.date) {
+            continue;
           }
+          return [property.date.start, property.date.end].filter(Boolean).join(" to ");
+        }
+        return "";
+      }
+
+      function propertyValueToText(property) {
+        switch (property.type) {
+          case "rich_text":
+            return richTextToPlain(property.rich_text || []);
+          case "number":
+            return property.number === null ? "" : String(property.number);
+          case "select":
+            return property.select ? property.select.name || "" : "";
+          case "multi_select":
+            return (property.multi_select || []).map((item) => item.name).filter(Boolean).join(", ");
+          case "status":
+            return property.status ? property.status.name || "" : "";
+          case "date":
+            return property.date ? [property.date.start, property.date.end].filter(Boolean).join(" to ") : "";
+          case "checkbox":
+            return property.checkbox ? "true" : "false";
+          case "url":
+            return property.url || "";
+          case "email":
+            return property.email || "";
+          case "phone_number":
+            return property.phone_number || "";
+          case "people":
+            return (property.people || []).map((person) => person.name).filter(Boolean).join(", ");
+          case "files":
+            return (property.files || [])
+              .map((file) => file.name || file.external?.url || file.file?.url || "")
+              .filter(Boolean)
+              .join(", ");
+          case "formula":
+            return formulaValueToText(property.formula || {});
+          case "relation":
+            return (property.relation || []).map((item) => item.id).join(", ");
+          case "rollup":
+            return rollupValueToText(property.rollup || {});
+          case "created_time":
+          case "last_edited_time":
+            return property[property.type] || "";
+          case "created_by":
+          case "last_edited_by":
+            return property[property.type]?.name || "";
+          default:
+            return "";
+        }
+      }
+
+      function formulaValueToText(formula) {
+        switch (formula.type) {
+          case "string":
+            return formula.string || "";
+          case "number":
+            return formula.number === null ? "" : String(formula.number);
+          case "boolean":
+            return formula.boolean ? "true" : "false";
+          case "date":
+            return formula.date ? [formula.date.start, formula.date.end].filter(Boolean).join(" to ") : "";
+          default:
+            return "";
+        }
+      }
+
+      function rollupValueToText(rollup) {
+        switch (rollup.type) {
+          case "number":
+            return rollup.number === null ? "" : String(rollup.number);
+          case "date":
+            return rollup.date ? [rollup.date.start, rollup.date.end].filter(Boolean).join(" to ") : "";
+          case "array":
+            return (rollup.array || [])
+              .map((item) => {
+                if (item.type === "title") {
+                  return richTextToPlain(item.title || []);
+                }
+                if (item.type === "rich_text") {
+                  return richTextToPlain(item.rich_text || []);
+                }
+                return item.plain_text || "";
+              })
+              .filter(Boolean)
+              .join(", ");
+          default:
+            return "";
+        }
+      }
+
+      function normalizePageId(value) {
+        const trimmed = value.trim();
+        const uuidMatch = trimmed.match(/[0-9a-fA-F]{32}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+
+        if (!uuidMatch) {
+          throw new Error("Could not extract a valid Notion page ID.");
         }
 
-        function formulaValueToText(formula) {
-          switch (formula.type) {
-            case "string":
-              return formula.string || "";
-            case "number":
-              return formula.number === null ? "" : String(formula.number);
-            case "boolean":
-              return formula.boolean ? "true" : "false";
-            case "date":
-              return formula.date ? [formula.date.start, formula.date.end].filter(Boolean).join(" to ") : "";
-            default:
-              return "";
-          }
+        const compact = uuidMatch[0].replace(/-/g, "").toLowerCase();
+        return [
+          compact.slice(0, 8),
+          compact.slice(8, 12),
+          compact.slice(12, 16),
+          compact.slice(16, 20),
+          compact.slice(20, 32),
+        ].join("-");
+      }
+
+      function clampInteger(value, fallback, min, max) {
+        const number = Number.parseInt(value, 10);
+        if (Number.isNaN(number)) {
+          return fallback;
+        }
+        return Math.min(Math.max(number, min), max);
+      }
+
+      function formatResults(results, input) {
+        if (!results.length) {
+          return input.query
+            ? `No Notion pages matched "${input.query}".`
+            : input.database_id || input.data_source_id
+              ? `No unfinished tasks were found where ${input.status_property} is not "${input.done_value}".`
+              : "No Notion page could be loaded.";
         }
 
-        function rollupValueToText(rollup) {
-          switch (rollup.type) {
-            case "number":
-              return rollup.number === null ? "" : String(rollup.number);
-            case "date":
-              return rollup.date ? [rollup.date.start, rollup.date.end].filter(Boolean).join(" to ") : "";
-            case "array":
-              return (rollup.array || [])
-                .map((item) => {
-                  if (item.type === "title") {
-                    return richTextToPlain(item.title || []);
-                  }
-                  if (item.type === "rich_text") {
-                    return richTextToPlain(item.rich_text || []);
-                  }
-                  return item.plain_text || "";
-                })
-                .filter(Boolean)
-                .join(", ");
-            default:
-              return "";
-          }
+        if (input.database_id || input.data_source_id) {
+          return formatTaskResults(results, input);
         }
 
-        function normalizePageId(value) {
-          const trimmed = value.trim();
-          const uuidMatch = trimmed.match(/[0-9a-fA-F]{32}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+        const sections = results.map((page, index) => {
+          const parts = [`Result ${index + 1}`, `Title: ${page.title}`];
 
-          if (!uuidMatch) {
-            throw new Error("Could not extract a valid Notion page ID.");
+          if (page.url) {
+            parts.push(`URL: ${page.url}`);
+          }
+          if (page.lastEditedTime) {
+            parts.push(`Last edited: ${page.lastEditedTime}`);
+          }
+          if (page.properties.length) {
+            parts.push("Properties:");
+            parts.push(...page.properties.map((line) => `- ${line}`));
+          }
+          if (page.content.length) {
+            parts.push("Content:");
+            parts.push(...page.content);
           }
 
-          const compact = uuidMatch[0].replace(/-/g, "").toLowerCase();
-          return [
-            compact.slice(0, 8),
-            compact.slice(8, 12),
-            compact.slice(12, 16),
-            compact.slice(16, 20),
-            compact.slice(20, 32),
-          ].join("-");
-        }
+          return parts.join("\n");
+        });
 
-        function clampInteger(value, fallback, min, max) {
-          const number = Number.parseInt(value, 10);
-          if (Number.isNaN(number)) {
-            return fallback;
+        return sections.join("\n\n");
+      }
+
+      function formatTaskResults(results, input) {
+        const summary = summarizeTasks(results);
+        const sections = [
+          `Open tasks: ${results.length}`,
+          `Overdue: ${summary.overdue}`,
+          `Due today: ${summary.dueToday}`,
+          `Due in next 7 days: ${summary.dueSoon}`,
+          `High priority: ${summary.highPriority}`,
+          `Medium priority: ${summary.mediumPriority}`,
+          `Low priority: ${summary.lowPriority}`,
+          `Completed filter: ${input.status_property} != ${input.done_value}`,
+          "",
+          "Tell the user:",
+          "- Start with the overdue tasks, then the due-soon tasks.",
+          "- Use priority and due date together when deciding what matters most.",
+          "- Highlight exactly 3 quick tasks they can likely finish next.",
+          "- Keep the summary brief and practical.",
+          "",
+        ];
+
+        results.forEach((page, index) => {
+          sections.push(`Task ${index + 1}`);
+          sections.push(`Title: ${page.title}`);
+          if (page.status) {
+            sections.push(`Status: ${page.status}`);
           }
-          return Math.min(Math.max(number, min), max);
-        }
-
-        function formatResults(results, input) {
-          if (!results.length) {
-            return input.query
-              ? `No Notion pages matched "${input.query}".`
-              : input.database_id || input.data_source_id
-                ? `No unfinished tasks were found where ${input.status_property} is not "${input.done_value}".`
-                : "No Notion page could be loaded.";
+          if (page.priority) {
+            sections.push(`Priority: ${page.priority}`);
           }
-
-          if (input.database_id || input.data_source_id) {
-            return formatTaskResults(results, input);
+          if (page.due) {
+            sections.push(`Due: ${page.due}`);
           }
+          if (page.url) {
+            sections.push(`URL: ${page.url}`);
+          }
+          if (page.properties.length) {
+            sections.push("Properties:");
+            sections.push(...page.properties.map((line) => `- ${line}`));
+          }
+          if (page.content.length) {
+            sections.push("Content:");
+            sections.push(...page.content);
+          }
+          sections.push("");
+        });
 
-          const sections = results.map((page, index) => {
-            const parts = [`Result ${index + 1}`, `Title: ${page.title}`];
+        return sections.join("\n").trim();
+      }
 
-            if (page.url) {
-              parts.push(`URL: ${page.url}`);
-            }
-            if (page.lastEditedTime) {
-              parts.push(`Last edited: ${page.lastEditedTime}`);
-            }
-            if (page.properties.length) {
-              parts.push("Properties:");
-              parts.push(...page.properties.map((line) => `- ${line}`));
-            }
-            if (page.content.length) {
-              parts.push("Content:");
-              parts.push(...page.content);
-            }
+      function summarizeTasks(results) {
+        const today = new Date();
+        const todayKey = toDateKey(today);
+        const nextWeek = new Date(today);
+        nextWeek.setDate(today.getDate() + 7);
+        const nextWeekKey = toDateKey(nextWeek);
+        let overdue = 0;
+        let dueToday = 0;
+        let dueSoon = 0;
+        let highPriority = 0;
+        let mediumPriority = 0;
+        let lowPriority = 0;
 
-            return parts.join("\n");
-          });
-
-          return sections.join("\n\n");
-        }
-
-        function formatTaskResults(results, input) {
-          const summary = summarizeTasks(results);
-          const sections = [
-            `Open tasks: ${results.length}`,
-            `Overdue: ${summary.overdue}`,
-            `Due today: ${summary.dueToday}`,
-            `Due in next 7 days: ${summary.dueSoon}`,
-            `High priority: ${summary.highPriority}`,
-            `Medium priority: ${summary.mediumPriority}`,
-            `Low priority: ${summary.lowPriority}`,
-            `Completed filter: ${input.status_property} != ${input.done_value}`,
-            "",
-            "Tell the user:",
-            "- Start with the overdue tasks, then the due-soon tasks.",
-            "- Use priority and due date together when deciding what matters most.",
-            "- Highlight exactly 3 quick tasks they can likely finish next.",
-            "- Keep the summary brief and practical.",
-            "",
-          ];
-
-          results.forEach((page, index) => {
-            sections.push(`Task ${index + 1}`);
-            sections.push(`Title: ${page.title}`);
-            if (page.status) {
-              sections.push(`Status: ${page.status}`);
-            }
-            if (page.priority) {
-              sections.push(`Priority: ${page.priority}`);
-            }
-            if (page.due) {
-              sections.push(`Due: ${page.due}`);
-            }
-            if (page.url) {
-              sections.push(`URL: ${page.url}`);
-            }
-            if (page.properties.length) {
-              sections.push("Properties:");
-              sections.push(...page.properties.map((line) => `- ${line}`));
-            }
-            if (page.content.length) {
-              sections.push("Content:");
-              sections.push(...page.content);
-            }
-            sections.push("");
-          });
-
-          return sections.join("\n").trim();
-        }
-
-        function summarizeTasks(results) {
-          const today = new Date();
-          const todayKey = toDateKey(today);
-          const nextWeek = new Date(today);
-          nextWeek.setDate(today.getDate() + 7);
-          const nextWeekKey = toDateKey(nextWeek);
-          let overdue = 0;
-          let dueToday = 0;
-          let dueSoon = 0;
-          let highPriority = 0;
-          let mediumPriority = 0;
-          let lowPriority = 0;
-
-          for (const task of results) {
-            const dueKey = extractComparableDate(task.due);
-            const priorityRank = getPriorityRank(task.priority);
-            if (!dueKey) {
-              if (priorityRank === 3) {
-                highPriority += 1;
-              } else if (priorityRank === 2) {
-                mediumPriority += 1;
-              } else if (priorityRank === 1) {
-                lowPriority += 1;
-              }
-              continue;
-            }
-            if (dueKey < todayKey) {
-              overdue += 1;
-            } else if (dueKey === todayKey) {
-              dueToday += 1;
-            } else if (dueKey <= nextWeekKey) {
-              dueSoon += 1;
-            }
-
+        for (const task of results) {
+          const dueKey = extractComparableDate(task.due);
+          const priorityRank = getPriorityRank(task.priority);
+          if (!dueKey) {
             if (priorityRank === 3) {
               highPriority += 1;
             } else if (priorityRank === 2) {
@@ -628,90 +612,106 @@
             } else if (priorityRank === 1) {
               lowPriority += 1;
             }
+            continue;
+          }
+          if (dueKey < todayKey) {
+            overdue += 1;
+          } else if (dueKey === todayKey) {
+            dueToday += 1;
+          } else if (dueKey <= nextWeekKey) {
+            dueSoon += 1;
           }
 
-          return { overdue, dueToday, dueSoon, highPriority, mediumPriority, lowPriority };
+          if (priorityRank === 3) {
+            highPriority += 1;
+          } else if (priorityRank === 2) {
+            mediumPriority += 1;
+          } else if (priorityRank === 1) {
+            lowPriority += 1;
+          }
         }
 
-        function sortTaskResults(results) {
-          return [...results].sort((left, right) => {
-            const leftDue = extractComparableDate(left.due);
-            const rightDue = extractComparableDate(right.due);
-            const leftPriority = getPriorityRank(left.priority);
-            const rightPriority = getPriorityRank(right.priority);
+        return { overdue, dueToday, dueSoon, highPriority, mediumPriority, lowPriority };
+      }
 
-            if (leftDue && rightDue && leftDue !== rightDue) {
-              return leftDue < rightDue ? -1 : 1;
-            }
-            if (leftDue && !rightDue) {
-              return -1;
-            }
-            if (!leftDue && rightDue) {
-              return 1;
-            }
-            if (leftPriority !== rightPriority) {
-              return rightPriority - leftPriority;
-            }
-            return left.title.localeCompare(right.title);
-          });
-        }
+      function sortTaskResults(results) {
+        return [...results].sort((left, right) => {
+          const leftDue = extractComparableDate(left.due);
+          const rightDue = extractComparableDate(right.due);
+          const leftPriority = getPriorityRank(left.priority);
+          const rightPriority = getPriorityRank(right.priority);
 
-        function getPriorityRank(value) {
-          const normalized = (value || "").trim().toLowerCase();
-          if (normalized === "high") {
-            return 3;
+          if (leftDue && rightDue && leftDue !== rightDue) {
+            return leftDue < rightDue ? -1 : 1;
           }
-          if (normalized === "medium") {
-            return 2;
+          if (leftDue && !rightDue) {
+            return -1;
           }
-          if (normalized === "low") {
+          if (!leftDue && rightDue) {
             return 1;
           }
-          return 0;
-        }
-
-        function extractComparableDate(value) {
-          if (!value) {
-            return "";
+          if (leftPriority !== rightPriority) {
+            return rightPriority - leftPriority;
           }
-          const match = value.match(/\d{4}-\d{2}-\d{2}/);
-          return match ? match[0] : "";
+          return left.title.localeCompare(right.title);
+        });
+      }
+
+      function getPriorityRank(value) {
+        const normalized = (value || "").trim().toLowerCase();
+        if (normalized === "high") {
+          return 3;
         }
-
-        function toDateKey(date) {
-          return date.toISOString().slice(0, 10);
+        if (normalized === "medium") {
+          return 2;
         }
+        if (normalized === "low") {
+          return 1;
+        }
+        return 0;
+      }
 
-        async function notionFetch(path, options = {}, secretConfig) {
-          const response = await fetch(`https://api.notion.com/v1${path}`, {
-            method: options.method || "GET",
-            headers: {
-              Authorization: `Bearer ${secretConfig.token}`,
-              "Notion-Version": NOTION_VERSION,
-              "Content-Type": "application/json",
-            },
-            body: options.body ? JSON.stringify(options.body) : undefined,
-          });
+      function extractComparableDate(value) {
+        if (!value) {
+          return "";
+        }
+        const match = value.match(/\d{4}-\d{2}-\d{2}/);
+        return match ? match[0] : "";
+      }
 
-          const text = await response.text();
-          let json = {};
+      function toDateKey(date) {
+        return date.toISOString().slice(0, 10);
+      }
 
-          if (text) {
-            try {
-              json = JSON.parse(text);
-            } catch (error) {
-              json = {};
-            }
+      async function notionFetch(path, options = {}, secretConfig) {
+        const response = await fetch(`https://api.notion.com/v1${path}`, {
+          method: options.method || "GET",
+          headers: {
+            Authorization: `Bearer ${secretConfig.token}`,
+            "Notion-Version": NOTION_VERSION,
+            "Content-Type": "application/json",
+          },
+          body: options.body ? JSON.stringify(options.body) : undefined,
+        });
+
+        const text = await response.text();
+        let json = {};
+
+        if (text) {
+          try {
+            json = JSON.parse(text);
+          } catch (error) {
+            json = {};
           }
-
-          if (!response.ok) {
-            const apiMessage = json.message || text || `HTTP ${response.status}`;
-            throw new Error(`Notion API error (${response.status}): ${apiMessage}`);
-          }
-
-          return json;
         }
-      };
+
+        if (!response.ok) {
+          const apiMessage = json.message || text || `HTTP ${response.status}`;
+          throw new Error(`Notion API error (${response.status}): ${apiMessage}`);
+        }
+
+        return json;
+      }
     </script>
   </body>
 </html>
