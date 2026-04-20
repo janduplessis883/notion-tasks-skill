@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Notion Context Skill</title>
+    <title>Notion Tasks Skill</title>
   </head>
   <body>
     <script>
@@ -19,11 +19,7 @@
         try {
           const secretConfig = parseSecret(secret);
           const input = parseInput(data, secretConfig);
-          const results = input.page_id
-            ? [await buildPageResult(input.page_id, input, secretConfig)]
-            : input.database_id || input.data_source_id
-              ? await queryTaskPages(input, secretConfig)
-              : await searchAndBuildResults(input, secretConfig);
+          const results = await resolveResults(input, secretConfig);
 
           return JSON.stringify({
             result: formatResults(results, input),
@@ -35,6 +31,38 @@
           });
         }
       };
+
+      async function resolveResults(input, secretConfig) {
+        if (input.page_id) {
+          try {
+            return [await buildPageResult(input.page_id, input, secretConfig)];
+          } catch (error) {
+            if (!shouldRetryIdAsTaskSource(error, input)) {
+              throw error;
+            }
+
+            try {
+              return await queryTaskPages({
+                ...input,
+                page_id: "",
+                data_source_id: input.page_id,
+              }, secretConfig);
+            } catch (dataSourceError) {
+              return await queryTaskPages({
+                ...input,
+                page_id: "",
+                database_id: input.page_id,
+              }, secretConfig);
+            }
+          }
+        }
+
+        if (input.database_id || input.data_source_id) {
+          return await queryTaskPages(input, secretConfig);
+        }
+
+        return await searchAndBuildResults(input, secretConfig);
+      }
 
       function parseSecret(rawSecret) {
         const trimmed = typeof rawSecret === "string" ? rawSecret.trim() : "";
@@ -111,6 +139,17 @@
           due_property: dueProperty,
           priority_property: priorityProperty,
         };
+      }
+
+      function shouldRetryIdAsTaskSource(error, input) {
+        if (!input.page_id || input.database_id || input.data_source_id || input.query) {
+          return false;
+        }
+
+        const message = (error?.message || "").toLowerCase();
+        return message.includes("notion api error (404)")
+          || message.includes("object_not_found")
+          || message.includes("could not extract a valid notion page id");
       }
 
       async function searchAndBuildResults(input, secretConfig) {

@@ -3,7 +3,7 @@ name: notion-tasks-skill
 description: Search Notion or query a task database for unfinished items, then pull page content into the conversation for summarization and prioritization.
 metadata:
   require-secret: true
-  require-secret-description: Paste either a Notion token, or a JSON secret with token and database_id so the database stays private.
+  require-secret-description: Paste your Notion integration token only. Provide the data source ID or database ID in the chat prompt.
 ---
 
 # Notion Tasks Skill
@@ -34,9 +34,12 @@ Call the `run_js` tool with the following exact parameters:
 
 ## Secret Format
 
-The skill accepts either of these secret formats:
+Recommended:
 
 - Raw token only: `secret_xxx`
+
+The skill still accepts JSON for compatibility:
+
 - JSON for private setup:
 
 ```json
@@ -46,13 +49,14 @@ The skill accepts either of these secret formats:
 }
 ```
 
-You can also provide `data_source_id` in the JSON secret if you prefer.
+You can also provide `data_source_id` in the JSON secret if you prefer, but token-only plus a pasted `data_source_id` in chat is the most reliable setup.
 
 ## Selection Rules
 
 - The `script name` `index.html` refers to `scripts/index.html` in the skill folder.
 - If the user asks for unfinished tasks from a Notion database, pass `database_id` or `data_source_id`.
-- If the user sends only a Notion-looking UUID or database URL after being asked for a database, treat it as `database_id`.
+- If the user sends only a Notion-looking UUID after being asked for tasks, treat it as `data_source_id` first.
+- Treat a bare UUID as `page_id` only when the user explicitly says it is a page ID or page URL.
 - For task lists, set `status_property` to the exact property name if the user provides it.
 - For task lists, set `done_value` to the exact completed status name if the user provides it.
 - For task lists, set `due_property` and `priority_property` to the exact column names if the user provides them.

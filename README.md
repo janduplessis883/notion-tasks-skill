@@ -23,13 +23,15 @@ Do not point the Gallery app at the repository URL on github.com. Use the publis
 
 ## Secret setup
 
-For privacy, the app secret can be either:
+Recommended setup:
 
 ```text
 secret_xxx
 ```
 
-or:
+Then paste the `data_source_id` or `database_id` directly in the chat prompt.
+
+For compatibility, the app secret can also be:
 
 ```json
 {
@@ -38,7 +40,7 @@ or:
 }
 ```
 
-That second option keeps the database ID out of the public repository and out of the README.
+That second option keeps the database ID out of the public repository and out of the README, but the simpler token-only setup is more reliable in the Gallery app.
 
 ## Local structure
 
